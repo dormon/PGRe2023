@@ -23,6 +23,22 @@ GLuint createShader(GLenum type,std::string const&src){
   return vs;
 }
 
+GLuint createProgram(std::vector<GLuint>const&shaders){
+  GLuint prg = glCreateProgram();
+  for(auto const&s:shaders)
+    glAttachShader(prg,s);
+  glLinkProgram(prg);
+
+  GLint status;
+  glGetProgramiv(prg,GL_LINK_STATUS,&status);
+  if(status != GL_TRUE){
+    char buffer[1000];
+    glGetProgramInfoLog(prg,1000,0,buffer);
+    std::cerr << buffer << std::endl;
+  }
+  return prg;
+}
+
 int main(int argc,char*argv[]){
 
   auto window = SDL_CreateWindow("PGRe2023",
@@ -48,10 +64,22 @@ int main(int argc,char*argv[]){
 
   auto vsSrc = R".(
   #version 460
+
+  out vec3 vColor;
+
   void main(){
-    if(gl_VertexID==0)gl_Position = vec4(0,0,0,1);
-    if(gl_VertexID==1)gl_Position = vec4(1,0,0,1);
-    if(gl_VertexID==2)gl_Position = vec4(0,1,0,1);
+    if(gl_VertexID==0){
+      vColor = vec3(1,0,0);
+      gl_Position = vec4(0,0,0,1);
+    }
+    if(gl_VertexID==1){
+      vColor = vec3(0,1,0);
+      gl_Position = vec4(1,0,0,1);
+    }
+    if(gl_VertexID==2){
+      vColor = vec3(0,0,1);
+      gl_Position = vec4(0,1,0,1);
+    }
 
 
   }
@@ -59,10 +87,13 @@ int main(int argc,char*argv[]){
 
   auto fsSrc = R".(
   #version 460
+  
+  in vec3 vColor;
 
   out vec4 fColor;
   void main(){
-    fColor = vec4(1);
+    fColor = vec4(vColor,1);
+    //fColor = vec4(0,0,0,1);
   }
 
   ).";
@@ -70,11 +101,8 @@ int main(int argc,char*argv[]){
 
   GLuint vs = createShader(GL_VERTEX_SHADER,vsSrc);
   GLuint fs = createShader(GL_FRAGMENT_SHADER,fsSrc);
+  GLuint prg = createProgram({vs,fs});
 
-  GLuint prg = glCreateProgram();
-  glAttachShader(prg,vs);
-  glAttachShader(prg,fs);
-  glLinkProgram(prg);
 
   GLuint vao;
   glCreateVertexArrays(1,&vao);
@@ -106,7 +134,7 @@ int main(int argc,char*argv[]){
 
 
 
-    glClearColor(0,.5,0,1);
+    glClearColor(0.3,0.3,0.3,1);
     glClear(GL_COLOR_BUFFER_BIT);
 
   
