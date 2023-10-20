@@ -30,6 +30,42 @@ int main(int argc,char*argv[]){
   std::cerr << major << minor << "0" << std::endl;
   std::cerr << glGetString( GL_VERSION) << std::endl;
 
+
+  auto vsSrc = R".(
+  #version 460
+  
+  void main(){
+    if(gl_VertexID==0)gl_Position = vec4(0,0,0,1);
+    if(gl_VertexID==1)gl_Position = vec4(1,0,0,1);
+    if(gl_VertexID==2)gl_Position = vec4(0,1,0,1);
+  }
+  ).";
+
+  auto fsSrc = R".(
+  #version 460
+
+  out vec4 fColor;
+  void main(){
+    fColor = vec4(1);
+  }
+
+  ).";
+
+  GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+  char const*p[]={vsSrc};
+  glShaderSource(vs,1,p,0);
+  glCompileShader(vs);
+
+  GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+  char const*g[]={fsSrc};
+  glShaderSource(fs,1,g,0);
+  glCompileShader(fs);
+
+  GLuint prg = glCreateProgram();
+  glAttachShader(prg,vs);
+  glAttachShader(prg,fs);
+  glLinkProgram(prg);
+
   GLuint vao;
   glCreateVertexArrays(1,&vao);
 
@@ -65,8 +101,9 @@ int main(int argc,char*argv[]){
 
   
     glBindVertexArray(vao);
-    glPointSize(10);
-    glDrawArrays(GL_POINTS,0,1);
+
+    glUseProgram(prg);
+    glDrawArrays(GL_TRIANGLES,0,3);
 
     // after rendering
     SDL_GL_SwapWindow(window);
