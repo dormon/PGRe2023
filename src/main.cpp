@@ -4,7 +4,9 @@
 
 int main(int argc,char*argv[]){
   auto window = SDL_CreateWindow("PGRe2023",
-      SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,1024,768,0);
+      SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,1024,768,SDL_WINDOW_OPENGL);
+
+  auto context = SDL_GL_CreateContext(window);
 
   bool running = true;
   while(running){ // main loop
@@ -18,21 +20,38 @@ int main(int argc,char*argv[]){
           running = false;
       }
       if(event.type == SDL_MOUSEMOTION){
-        std::cerr << event.motion.xrel << std::endl;
-        std::cerr << event.motion.yrel << std::endl;
       }
       if(event.type == SDL_MOUSEBUTTONDOWN){
         if(event.button.button == SDL_BUTTON_LEFT){
-          std::cerr << "left" << std::endl;
         }
         if(event.button.button == SDL_BUTTON_RIGHT){
-          std::cerr << "right" << std::endl;
         }
       }
 
     }
+
+    // draw
+ 
+    using GLCLEARTYPE = void(*)(int);
+    using GLCLEARCOLORTYPE = void(*)(float,float,float,float);
+
+    GLCLEARTYPE      glClear      = nullptr;
+    GLCLEARCOLORTYPE glClearColor = nullptr;
+#define GL_COLOR_BUFFER_BIT			0x00004000
+
+
+    glClear      = (GLCLEARTYPE     )SDL_GL_GetProcAddress("glClear"     );
+    glClearColor = (GLCLEARCOLORTYPE)SDL_GL_GetProcAddress("glClearColor");
+
+    glClearColor(0,.5,0,1);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+
+    // after rendering
+    SDL_GL_SwapWindow(window);
   }
 
+  //SDL_GL_DeleteContext(context);
   SDL_DestroyWindow(window);
 
   return 0;
