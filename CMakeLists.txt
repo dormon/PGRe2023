@@ -9,8 +9,10 @@ option(SDL_SHARED "" OFF)
 option(SDL_STATIC "" ON)
 add_subdirectory(libs/SDL-release-2.28.4)
 
+add_subdirectory(libs/geGL)
+
 add_executable(${PROJECT_NAME} src/main.cpp)
 
-target_link_libraries(${PROJECT_NAME} SDL2::SDL2 SDL2::SDL2main)
+target_link_libraries(${PROJECT_NAME} SDL2::SDL2 SDL2::SDL2main geGL::geGL)
 
 add_custom_target(run ./PGRE2023)
