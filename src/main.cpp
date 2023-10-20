@@ -3,7 +3,8 @@
 #include<SDL.h>
 
 int main(int argc,char*argv[]){
-  SDL_CreateWindow("PGRe2023",0,0,1024,768,0);
+  auto window = SDL_CreateWindow("PGRe2023",
+      SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,1024,768,0);
 
   bool running = true;
   while(running){ // main loop
@@ -14,6 +15,8 @@ int main(int argc,char*argv[]){
 
     }
   }
-  std::cerr << "Hello World!" << std::endl;
+
+  SDL_DestroyWindow(window);
+
   return 0;
 }
