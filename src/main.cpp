@@ -8,6 +8,21 @@
 
 using namespace ge::gl;
 
+GLuint createShader(GLenum type,std::string const&src){
+  GLuint vs = glCreateShader(type);
+  char const*p[]={src.c_str()};
+  glShaderSource(vs,1,p,0);
+  glCompileShader(vs);
+  GLint status;
+  glGetShaderiv(vs,GL_COMPILE_STATUS,&status);
+  if(status != GL_TRUE){
+    char buffer[1000];
+    glGetShaderInfoLog(vs,1000,0,buffer);
+    std::cerr << buffer << std::endl;
+  }
+  return vs;
+}
+
 int main(int argc,char*argv[]){
 
   auto window = SDL_CreateWindow("PGRe2023",
@@ -33,11 +48,12 @@ int main(int argc,char*argv[]){
 
   auto vsSrc = R".(
   #version 460
-  
   void main(){
     if(gl_VertexID==0)gl_Position = vec4(0,0,0,1);
     if(gl_VertexID==1)gl_Position = vec4(1,0,0,1);
     if(gl_VertexID==2)gl_Position = vec4(0,1,0,1);
+
+
   }
   ).";
 
@@ -51,15 +67,9 @@ int main(int argc,char*argv[]){
 
   ).";
 
-  GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-  char const*p[]={vsSrc};
-  glShaderSource(vs,1,p,0);
-  glCompileShader(vs);
 
-  GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-  char const*g[]={fsSrc};
-  glShaderSource(fs,1,g,0);
-  glCompileShader(fs);
+  GLuint vs = createShader(GL_VERTEX_SHADER,vsSrc);
+  GLuint fs = createShader(GL_FRAGMENT_SHADER,fsSrc);
 
   GLuint prg = glCreateProgram();
   glAttachShader(prg,vs);
