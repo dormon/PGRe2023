@@ -12,6 +12,23 @@ int main(int argc,char*argv[]){
     while(SDL_PollEvent(&event)){ // event loop
       if(event.type == SDL_QUIT)
         running = false;
+      if(event.type == SDL_KEYDOWN){
+        auto key = event.key.keysym.sym;
+        if(key == SDLK_q)
+          running = false;
+      }
+      if(event.type == SDL_MOUSEMOTION){
+        std::cerr << event.motion.xrel << std::endl;
+        std::cerr << event.motion.yrel << std::endl;
+      }
+      if(event.type == SDL_MOUSEBUTTONDOWN){
+        if(event.button.button == SDL_BUTTON_LEFT){
+          std::cerr << "left" << std::endl;
+        }
+        if(event.button.button == SDL_BUTTON_RIGHT){
+          std::cerr << "right" << std::endl;
+        }
+      }
 
     }
   }
