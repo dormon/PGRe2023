@@ -4,6 +4,9 @@ project(PGRE2023)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1 ) 
 
+
+option(SDL_SHARED "" OFF)
+option(SDL_STATIC "" ON)
 add_subdirectory(libs/SDL-release-2.28.4)
 
 add_executable(${PROJECT_NAME} src/main.cpp)
