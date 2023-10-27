@@ -87,9 +87,39 @@ int main(int argc,char*argv[]){
   layout(location=0)in vec3 position;
   layout(location=1)in vec3 color;
 
+  mat4 S(float x,float y,float z){
+    mat4 M = mat4(1);
+    M[0][0] = x;
+    M[1][1] = y;
+    M[2][2] = z;
+    return M;
+  }
+
+  mat4 T(float x,float y,float z){
+    mat4 M = mat4(1);
+    M[3][0] = x;
+    M[3][1] = y;
+    M[3][2] = z;
+    return M;
+  }
+
+  mat4 Rx(float a){
+    mat4 M = mat4(1);
+    M[1][1] = cos(a);
+    M[2][2] = cos(a);
+    M[1][2] = sin(a);
+    M[2][1] = -sin(a);
+    return M;
+  }
+
+  uniform float angle = 0;
+
   void main(){
     vColor = color;
-    gl_Position = vec4(position,1);
+
+    mat4 M = Rx(radians(angle));
+
+    gl_Position = M*vec4(position,1);
 
   }
   ).";
@@ -111,6 +141,10 @@ int main(int argc,char*argv[]){
   GLuint vs = createShader(GL_VERTEX_SHADER,vsSrc);
   GLuint fs = createShader(GL_FRAGMENT_SHADER,fsSrc);
   GLuint prg = createProgram({vs,fs});
+
+  GLuint angleL = glGetUniformLocation(prg,"angle");
+
+  float angle = 0.f;
 
 
   float const vertices[] = {
@@ -180,6 +214,9 @@ int main(int argc,char*argv[]){
     glBindVertexArray(vao);
 
     glUseProgram(prg);
+
+    angle += 10.f;
+    glUniform1f(angleL,angle);
 
     glDrawElements(GL_TRIANGLES,
         sizeof(bunnyIndices)/sizeof(uint32_t),
