@@ -95,9 +95,6 @@ int main(int argc,char*argv[]){
   GLuint prg = createProgram({vs,fs});
 
 
-  GLuint vao;
-  glCreateVertexArrays(1,&vao);
-
   float const vertices[] = {
     0,0,
     1,0,
@@ -107,6 +104,24 @@ int main(int argc,char*argv[]){
   GLuint vbo;
   glCreateBuffers(1,&vbo);
   glNamedBufferData(vbo,sizeof(vertices),vertices,GL_DYNAMIC_DRAW);
+
+
+  GLuint vao;
+  glCreateVertexArrays(1,&vao);
+
+  glVertexArrayAttribBinding(vao,0,0);
+  glEnableVertexArrayAttrib(vao,0);
+  glVertexArrayAttribFormat(vao,
+    0,//attrib index
+    2,//nof components (vec2)
+    GL_FLOAT,//type
+    GL_FALSE,//normalization
+    0);//relative offset
+  glVertexArrayVertexBuffer(vao,0,
+    vbo,
+    sizeof(float)*0,//offset
+    sizeof(float)*2);//stride
+
 
   bool running = true;
   while(running){ // main loop
