@@ -84,12 +84,12 @@ int main(int argc,char*argv[]){
 
   out vec3 vColor;
 
-  layout(location=0)in vec2 position;
+  layout(location=0)in vec3 position;
   layout(location=1)in vec3 color;
 
   void main(){
     vColor = color;
-    gl_Position = vec4(position,0,1);
+    gl_Position = vec4(position,1);
 
   }
   ).";
@@ -122,7 +122,10 @@ int main(int argc,char*argv[]){
 
   GLuint vbo;
   glCreateBuffers(1,&vbo);
-  glNamedBufferData(vbo,sizeof(vertices),vertices,GL_DYNAMIC_DRAW);
+
+  glNamedBufferData(vbo,sizeof(bunnyVertices),bunnyVertices,GL_DYNAMIC_DRAW);
+
+
 
   uint32_t const elements[] = {
     0,1,2,
@@ -131,16 +134,17 @@ int main(int argc,char*argv[]){
 
   GLuint ebo;
   glCreateBuffers(1,&ebo);
-  glNamedBufferData(ebo,sizeof(elements),elements,GL_DYNAMIC_DRAW);
+  glNamedBufferData(ebo,sizeof(bunnyIndices),bunnyIndices,GL_DYNAMIC_DRAW);
 
 
   GLuint vao;
   glCreateVertexArrays(1,&vao);
   glVertexArrayElementBuffer(vao,ebo);
-  addAttrib(vao,vbo,0,2,GL_FLOAT,sizeof(float)*0,sizeof(float)*5);
-  addAttrib(vao,vbo,1,3,GL_FLOAT,sizeof(float)*2,sizeof(float)*5);
+  addAttrib(vao,vbo,0,3,GL_FLOAT,sizeof(float)*0,sizeof(float)*6);
+  addAttrib(vao,vbo,1,3,GL_FLOAT,sizeof(float)*3,sizeof(float)*6);
 
 
+  uint32_t triangleCounter = 0;
   bool running = true;
   while(running){ // main loop
     SDL_Event event;
@@ -169,14 +173,17 @@ int main(int argc,char*argv[]){
 
 
     glClearColor(0.3,0.3,0.3,1);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
   
+    glEnable(GL_DEPTH_TEST);
     glBindVertexArray(vao);
 
     glUseProgram(prg);
 
-    glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
+    glDrawElements(GL_TRIANGLES,
+        sizeof(bunnyIndices)/sizeof(uint32_t),
+        GL_UNSIGNED_INT,0);
 
     // after rendering
     SDL_GL_SwapWindow(window);
