@@ -39,6 +39,21 @@ GLuint createProgram(std::vector<GLuint>const&shaders){
   return prg;
 }
 
+void addAttrib(GLuint vao,GLuint vbo,GLint a,GLuint n,GLenum t,GLsizei o,GLsizei s){
+  glVertexArrayAttribBinding(vao,a,a);
+  glEnableVertexArrayAttrib(vao,a);
+  glVertexArrayAttribFormat(vao,
+    a,//attrib index
+    n,//nof components (vec2)
+    t,//type
+    GL_FALSE,//normalization
+    0);//relative offset
+  glVertexArrayVertexBuffer(vao,a,
+    vbo,
+    o,//offset
+    s);//stride
+}
+
 int main(int argc,char*argv[]){
 
   auto window = SDL_CreateWindow("PGRe2023",
@@ -68,9 +83,10 @@ int main(int argc,char*argv[]){
   out vec3 vColor;
 
   layout(location=0)in vec2 position;
+  layout(location=1)in vec3 color;
 
   void main(){
-    vColor = vec3(1);
+    vColor = color;
     gl_Position = vec4(position,0,1);
 
   }
@@ -96,31 +112,31 @@ int main(int argc,char*argv[]){
 
 
   float const vertices[] = {
-    0,0,
-    1,0,
-    0,1,
+    0,0,1,0,0,
+    1,0,0,1,0,
+    0,1,0,0,1,
+    1,1,1,1,0,
   };
 
   GLuint vbo;
   glCreateBuffers(1,&vbo);
   glNamedBufferData(vbo,sizeof(vertices),vertices,GL_DYNAMIC_DRAW);
 
+  uint32_t const elements[] = {
+    0,1,2,
+    2,1,3,
+  };
+
+  GLuint ebo;
+  glCreateBuffers(1,&ebo);
+  glNamedBufferData(ebo,sizeof(elements),elements,GL_DYNAMIC_DRAW);
+
 
   GLuint vao;
   glCreateVertexArrays(1,&vao);
-
-  glVertexArrayAttribBinding(vao,0,0);
-  glEnableVertexArrayAttrib(vao,0);
-  glVertexArrayAttribFormat(vao,
-    0,//attrib index
-    2,//nof components (vec2)
-    GL_FLOAT,//type
-    GL_FALSE,//normalization
-    0);//relative offset
-  glVertexArrayVertexBuffer(vao,0,
-    vbo,
-    sizeof(float)*0,//offset
-    sizeof(float)*2);//stride
+  glVertexArrayElementBuffer(vao,ebo);
+  addAttrib(vao,vbo,0,2,GL_FLOAT,sizeof(float)*0,sizeof(float)*5);
+  addAttrib(vao,vbo,1,3,GL_FLOAT,sizeof(float)*2,sizeof(float)*5);
 
 
   bool running = true;
@@ -157,7 +173,8 @@ int main(int argc,char*argv[]){
     glBindVertexArray(vao);
 
     glUseProgram(prg);
-    glDrawArrays(GL_TRIANGLES,0,3);
+
+    glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
 
     // after rendering
     SDL_GL_SwapWindow(window);
