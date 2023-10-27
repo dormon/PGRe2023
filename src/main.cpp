@@ -6,6 +6,8 @@
 #include<geGL/geGL.h>
 #include<geGL/StaticCalls.h>
 
+#include<bunny.hpp>
+
 using namespace ge::gl;
 
 GLuint createShader(GLenum type,std::string const&src){
