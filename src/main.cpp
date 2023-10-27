@@ -45,13 +45,13 @@ int main(int argc,char*argv[]){
       SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,1024,768,SDL_WINDOW_OPENGL);
 
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   auto context = SDL_GL_CreateContext(window);
 
-  ge::gl::init();
-  ge::gl::setDefaultDebugMessage();
+  ge::gl::init(SDL_GL_GetProcAddress);
+  //ge::gl::setDefaultDebugMessage();
 
 
   GLint major;
@@ -63,30 +63,21 @@ int main(int argc,char*argv[]){
 
 
   auto vsSrc = R".(
-  #version 460
+  #version 410
 
   out vec3 vColor;
 
-  void main(){
-    if(gl_VertexID==0){
-      vColor = vec3(1,0,0);
-      gl_Position = vec4(0,0,0,1);
-    }
-    if(gl_VertexID==1){
-      vColor = vec3(0,1,0);
-      gl_Position = vec4(1,0,0,1);
-    }
-    if(gl_VertexID==2){
-      vColor = vec3(0,0,1);
-      gl_Position = vec4(0,1,0,1);
-    }
+  layout(location=0)in vec2 position;
 
+  void main(){
+    vColor = vec3(1);
+    gl_Position = vec4(position,0,1);
 
   }
   ).";
 
   auto fsSrc = R".(
-  #version 460
+  #version 410
   
   in vec3 vColor;
 
@@ -106,6 +97,16 @@ int main(int argc,char*argv[]){
 
   GLuint vao;
   glCreateVertexArrays(1,&vao);
+
+  float const vertices[] = {
+    0,0,
+    1,0,
+    0,1,
+  };
+
+  GLuint vbo;
+  glCreateBuffers(1,&vbo);
+  glNamedBufferData(vbo,sizeof(vertices),vertices,GL_DYNAMIC_DRAW);
 
   bool running = true;
   while(running){ // main loop
