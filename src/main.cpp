@@ -158,14 +158,52 @@ int main(int argc,char*argv[]){
   }
   ).";
 
+  auto gsSrc = R".(
+  #version 410
+
+  layout(triangles)in;
+  layout(line_strip,max_vertices=6)out;
+
+  in vec3 vColor[];
+  out vec3 gColor;
+
+  void main(){
+    vec4 center = (gl_in[0].gl_Position + gl_in[1].gl_Position + gl_in[2].gl_Position) / 3.f;
+    vec3 cc = (vColor[0] + vColor[1] + vColor[2]) /3.f;
+
+    vec4 A = (gl_in[0].gl_Position + gl_in[1].gl_Position) / 2.f;
+    vec4 B = (gl_in[1].gl_Position + gl_in[2].gl_Position) / 2.f;
+    vec4 C = (gl_in[2].gl_Position + gl_in[0].gl_Position) / 2.f;
+
+    vec3 cA = (vColor[0] + vColor[1]) / 2.f;
+    vec3 cB = (vColor[1] + vColor[2]) / 2.f;
+    vec3 cC = (vColor[2] + vColor[0]) / 2.f;
+
+
+    gl_Position = center;gColor = cc;EmitVertex();
+    gl_Position = A;gColor = cA;EmitVertex();
+    EndPrimitive();
+
+    gl_Position = center;gColor = cc;EmitVertex();
+    gl_Position = B;gColor = cB;EmitVertex();
+    EndPrimitive();
+
+    gl_Position = center;gColor = cc;EmitVertex();
+    gl_Position = C;gColor = cC;EmitVertex();
+    EndPrimitive();
+
+  }
+
+  ).";
+
   auto fsSrc = R".(
   #version 410
   
-  in vec3 vColor;
+  in vec3 gColor;
 
   out vec4 fColor;
   void main(){
-    fColor = vec4(vColor,1);
+    fColor = vec4(gColor,1);
     //fColor = vec4(0,0,0,1);
   }
 
@@ -173,8 +211,9 @@ int main(int argc,char*argv[]){
 
 
   GLuint vs  = createShader(GL_VERTEX_SHADER,vsSrc);
+  GLuint gs  = createShader(GL_GEOMETRY_SHADER,gsSrc);
   GLuint fs  = createShader(GL_FRAGMENT_SHADER,fsSrc);
-  GLuint prg = createProgram({vs,fs});
+  GLuint prg = createProgram({vs,gs,fs});
 
   GLuint angleL  = glGetUniformLocation(prg,"angle" );
   GLuint projL   = glGetUniformLocation(prg,"proj"  );
