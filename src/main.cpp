@@ -1,6 +1,7 @@
 #include "geGL/DebugMessage.h"
 #include "geGL/OpenGL.h"
 #include "glm/ext/matrix_transform.hpp"
+#include "glm/gtc/constants.hpp"
 #include<iostream>
 
 #include<SDL.h>
@@ -145,8 +146,6 @@ int main(int argc,char*argv[]){
   layout(location=0)in vec3 position;
   layout(location=1)in vec3 color;
 
-  uniform float angle = 0;
-
   uniform mat4 proj  = mat4(1.f);
   uniform mat4 view  = mat4(1.f);
   uniform mat4 model = mat4(1.f);
@@ -201,11 +200,17 @@ int main(int argc,char*argv[]){
   float aspect = (float)width / (float)height;
   auto proj = glm::perspective(glm::half_pi<float>(),aspect,0.1f,1000.f);
 
-  auto view = glm::lookAt(glm::vec3(3.f,3.f,3.f),glm::vec3(0.f),glm::vec3(0.f,1.f,0.f));
 
 
   uint32_t triangleCounter = 0;
   bool running = true;
+
+  float cameraYAngle = 0.f;
+  float cameraXAngle = 0.f;
+  float senstivity = 0.1f;
+  float cameraDistance = 3.f;
+  float zoomSpeed = 0.1f;
+
   while(running){ // main loop
     SDL_Event event;
     while(SDL_PollEvent(&event)){ // event loop
@@ -217,6 +222,14 @@ int main(int argc,char*argv[]){
           running = false;
       }
       if(event.type == SDL_MOUSEMOTION){
+        if(event.motion.state & SDL_BUTTON_LMASK){
+          cameraYAngle += event.motion.xrel*senstivity;
+          cameraXAngle += event.motion.yrel*senstivity;
+          cameraXAngle = glm::clamp(cameraXAngle,-glm::half_pi<float>()+.01f,+glm::half_pi<float>()-.01f);
+        }
+        if(event.motion.state & SDL_BUTTON_RMASK){
+          cameraDistance += event.motion.yrel*zoomSpeed;
+        }
       }
       if(event.type == SDL_MOUSEBUTTONDOWN){
         if(event.button.button == SDL_BUTTON_LEFT){
@@ -241,9 +254,23 @@ int main(int argc,char*argv[]){
 
     glUseProgram(prg);
 
-    angle += 10.f;
-    auto model = glm::rotate(glm::mat4(1.f),glm::radians(angle),glm::vec3(0.f,1.f,0.f));
-    glUniform1f(angleL,angle);
+
+    auto cameraLocation = glm::vec3(
+        glm::cos(cameraYAngle)*glm::cos(cameraXAngle),
+        glm::sin(cameraXAngle),
+        glm::sin(cameraYAngle)*glm::cos(cameraXAngle)) * cameraDistance;
+
+    auto view = glm::lookAt(cameraLocation,glm::vec3(0.f),glm::vec3(0.f,1.f,0.f));
+
+    angle += 1.f;
+
+
+    auto T = glm::translate(glm::mat4(1.f),glm::vec3(1.f,0.f,0.f));
+    auto S = glm::scale(glm::mat4(1.f),glm::vec3(1.f,2.f,1.f));
+    auto R = glm::rotate(glm::mat4(1.f),glm::radians(angle),glm::vec3(0.f,1.f,0.f));
+
+    auto model = T*R*S;
+
 
     glUniformMatrix4fv(projL ,1,GL_FALSE,(float*)&proj );
     glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
