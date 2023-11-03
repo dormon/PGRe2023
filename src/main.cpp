@@ -1,5 +1,6 @@
 #include "geGL/DebugMessage.h"
 #include "geGL/OpenGL.h"
+#include "glm/ext/matrix_transform.hpp"
 #include<iostream>
 
 #include<SDL.h>
@@ -9,6 +10,8 @@
 #include<bunny.hpp>
 
 #include<glm/glm.hpp>
+#include<glm/gtc/matrix_transform.hpp>
+#include<glm/gtc/type_ptr.hpp>
 
 #define OPENGL_OLD
 
@@ -110,9 +113,11 @@ GLuint createVertexArray(){
 }
 
 int main(int argc,char*argv[]){
+  int width = 1024;
+  int height = 768;
 
   auto window = SDL_CreateWindow("PGRe2023",
-      SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,1024,768,SDL_WINDOW_OPENGL);
+      SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_OPENGL);
 
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
@@ -140,39 +145,16 @@ int main(int argc,char*argv[]){
   layout(location=0)in vec3 position;
   layout(location=1)in vec3 color;
 
-  mat4 S(float x,float y,float z){
-    mat4 M = mat4(1);
-    M[0][0] = x;
-    M[1][1] = y;
-    M[2][2] = z;
-    return M;
-  }
-
-  mat4 T(float x,float y,float z){
-    mat4 M = mat4(1);
-    M[3][0] = x;
-    M[3][1] = y;
-    M[3][2] = z;
-    return M;
-  }
-
-  mat4 Rx(float a){
-    mat4 M = mat4(1);
-    M[1][1] = cos(a);
-    M[2][2] = cos(a);
-    M[1][2] = sin(a);
-    M[2][1] = -sin(a);
-    return M;
-  }
-
   uniform float angle = 0;
+
+  uniform mat4 proj  = mat4(1.f);
+  uniform mat4 view  = mat4(1.f);
+  uniform mat4 model = mat4(1.f);
 
   void main(){
     vColor = color;
 
-    mat4 M = Rx(radians(angle));
-
-    gl_Position = M*vec4(position,1);
+    gl_Position = proj*view*model*vec4(position,1);
 
   }
   ).";
@@ -195,7 +177,10 @@ int main(int argc,char*argv[]){
   GLuint fs  = createShader(GL_FRAGMENT_SHADER,fsSrc);
   GLuint prg = createProgram({vs,fs});
 
-  GLuint angleL = glGetUniformLocation(prg,"angle");
+  GLuint angleL  = glGetUniformLocation(prg,"angle" );
+  GLuint projL   = glGetUniformLocation(prg,"proj"  );
+  GLuint viewL   = glGetUniformLocation(prg,"view"  );
+  GLuint modelL  = glGetUniformLocation(prg,"model" );
 
   float angle = 0.f;
 
@@ -207,6 +192,16 @@ int main(int argc,char*argv[]){
   addAttrib(vao,vbo,0,3,GL_FLOAT,sizeof(float)*0,sizeof(float)*6);
   addAttrib(vao,vbo,1,3,GL_FLOAT,sizeof(float)*3,sizeof(float)*6);
   addElementBuffer(vao,ebo);
+
+
+  auto v = glm::vec4(1.f,0.f,0.f,1.f);
+  auto M = glm::mat4(1.f);
+  v = M*v;
+
+  float aspect = (float)width / (float)height;
+  auto proj = glm::perspective(glm::half_pi<float>(),aspect,0.1f,1000.f);
+
+  auto view = glm::lookAt(glm::vec3(3.f,3.f,3.f),glm::vec3(0.f),glm::vec3(0.f,1.f,0.f));
 
 
   uint32_t triangleCounter = 0;
@@ -247,7 +242,12 @@ int main(int argc,char*argv[]){
     glUseProgram(prg);
 
     angle += 10.f;
+    auto model = glm::rotate(glm::mat4(1.f),glm::radians(angle),glm::vec3(0.f,1.f,0.f));
     glUniform1f(angleL,angle);
+
+    glUniformMatrix4fv(projL ,1,GL_FALSE,(float*)&proj );
+    glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
+    glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model);
 
     glDrawElements(GL_TRIANGLES,
         sizeof(bunnyIndices)/sizeof(uint32_t),
