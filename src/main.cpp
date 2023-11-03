@@ -8,7 +8,9 @@
 
 #include<bunny.hpp>
 
-//#define OPENGL_OLD
+#include<glm/glm.hpp>
+
+#define OPENGL_OLD
 
 using namespace ge::gl;
 

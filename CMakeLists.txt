@@ -12,12 +12,15 @@ add_subdirectory(libs/SDL-release-2.28.4)
 
 add_subdirectory(libs/geGL)
 
+add_library(glm INTERFACE)
+target_include_directories(glm INTERFACE libs/glm-0.9.9.8)
+
 add_executable(${PROJECT_NAME} 
   src/main.cpp
   src/bunny.cpp
   src/bunny.hpp)
 
-target_link_libraries(${PROJECT_NAME} SDL2::SDL2 SDL2::SDL2main geGL::geGL)
+target_link_libraries(${PROJECT_NAME} SDL2::SDL2 SDL2::SDL2main geGL::geGL glm)
 target_include_directories(${PROJECT_NAME} PUBLIC src/)
 
 add_custom_target(run ./PGRE2023)
