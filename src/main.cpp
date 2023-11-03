@@ -264,21 +264,30 @@ int main(int argc,char*argv[]){
 
     angle += 1.f;
 
-
-    auto T = glm::translate(glm::mat4(1.f),glm::vec3(1.f,0.f,0.f));
-    auto S = glm::scale(glm::mat4(1.f),glm::vec3(1.f,2.f,1.f));
-    auto R = glm::rotate(glm::mat4(1.f),glm::radians(angle),glm::vec3(0.f,1.f,0.f));
-
-    auto model = T*R*S;
-
-
     glUniformMatrix4fv(projL ,1,GL_FALSE,(float*)&proj );
     glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
-    glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model);
 
-    glDrawElements(GL_TRIANGLES,
-        sizeof(bunnyIndices)/sizeof(uint32_t),
-        GL_UNSIGNED_INT,0);
+
+    auto T = glm::translate(glm::mat4(1.f),glm::vec3(0.f,0.f,0.f));
+    auto S = glm::scale(glm::mat4(1.f),glm::vec3(1.f,1.f,1.f));
+    auto R = glm::rotate(glm::mat4(1.f),glm::radians(angle*.2f),glm::vec3(0.f,1.f,0.f));
+    auto model1 = T*R*S;
+    glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model1);
+    glDrawElements(GL_TRIANGLES,sizeof(bunnyIndices)/sizeof(uint32_t),GL_UNSIGNED_INT,0);
+
+    auto T2 = glm::translate(glm::mat4(1.f),glm::vec3(4.f,0.f,0.f));
+    auto S2 = glm::scale(glm::mat4(1.f),glm::vec3(.2f));
+    auto R2 = glm::rotate(glm::mat4(1.f),glm::radians(angle*2),glm::vec3(0.f,1.f,0.f));
+    auto model2 = R*T2*S2*R2;
+    glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model2);
+    glDrawElements(GL_TRIANGLES,sizeof(bunnyIndices)/sizeof(uint32_t),GL_UNSIGNED_INT,0);
+
+    auto T3 = glm::translate(glm::mat4(1.f),glm::vec3(4.f,0.f,0.f));
+    auto S3 = glm::scale(glm::mat4(1.f),glm::vec3(.2f));
+    auto R3 = glm::rotate(glm::mat4(1.f),glm::radians(-angle*3),glm::vec3(0.f,1.f,0.f));
+    auto model3 = model2*T3*R3*S3;
+    glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model3);
+    glDrawElements(GL_TRIANGLES,sizeof(bunnyIndices)/sizeof(uint32_t),GL_UNSIGNED_INT,0);
 
     // after rendering
     SDL_GL_SwapWindow(window);
