@@ -8,6 +8,8 @@
 
 #include<bunny.hpp>
 
+//#define OPENGL_OLD
+
 using namespace ge::gl;
 
 GLuint createShader(GLenum type,std::string const&src){
@@ -42,6 +44,12 @@ GLuint createProgram(std::vector<GLuint>const&shaders){
 }
 
 void addAttrib(GLuint vao,GLuint vbo,GLint a,GLuint n,GLenum t,GLsizei o,GLsizei s){
+#ifdef OPENGL_OLD
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER,vbo);
+  glEnableVertexAttribArray(a);
+  glVertexAttribPointer(a,n,t,GL_FALSE,s,(void*)((size_t)o));
+#else
   glVertexArrayAttribBinding(vao,a,a);
   glEnableVertexArrayAttrib(vao,a);
   glVertexArrayAttribFormat(vao,
@@ -54,6 +62,49 @@ void addAttrib(GLuint vao,GLuint vbo,GLint a,GLuint n,GLenum t,GLsizei o,GLsizei
     vbo,
     o,//offset
     s);//stride
+
+#endif
+}
+
+void addElementBuffer(GLuint vao,GLuint ebo){
+#ifdef OPENGL_OLD
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo);
+#else
+  glVertexArrayElementBuffer(vao,ebo);
+#endif
+}
+
+GLuint createBuffer(GLsizeiptr size,void const*data){
+  GLuint id;
+#ifdef OPENGL_OLD
+  glGenBuffers(1,&id);
+  glBindBuffer(GL_ARRAY_BUFFER,id);
+  glBufferData(
+      GL_ARRAY_BUFFER,
+      size,
+      data,
+      GL_DYNAMIC_DRAW);
+#else
+  glCreateBuffers(1,&id);
+  glNamedBufferData(
+      id,
+      size,
+      data,
+      GL_DYNAMIC_DRAW);
+#endif
+  return id;
+}
+
+GLuint createVertexArray(){
+  GLuint vao;
+#ifdef OPENGL_OLD
+  glGenVertexArrays(1,&vao);
+  glBindVertexArray(vao);
+#else
+  glCreateVertexArrays(1,&vao);
+#endif
+  return vao;
 }
 
 int main(int argc,char*argv[]){
@@ -138,8 +189,8 @@ int main(int argc,char*argv[]){
   ).";
 
 
-  GLuint vs = createShader(GL_VERTEX_SHADER,vsSrc);
-  GLuint fs = createShader(GL_FRAGMENT_SHADER,fsSrc);
+  GLuint vs  = createShader(GL_VERTEX_SHADER,vsSrc);
+  GLuint fs  = createShader(GL_FRAGMENT_SHADER,fsSrc);
   GLuint prg = createProgram({vs,fs});
 
   GLuint angleL = glGetUniformLocation(prg,"angle");
@@ -147,35 +198,13 @@ int main(int argc,char*argv[]){
   float angle = 0.f;
 
 
-  float const vertices[] = {
-    0,0,1,0,0,
-    1,0,0,1,0,
-    0,1,0,0,1,
-    1,1,1,1,0,
-  };
+  GLuint vbo = createBuffer(sizeof(bunnyVertices),bunnyVertices);
+  GLuint ebo = createBuffer(sizeof(bunnyIndices),bunnyIndices);
 
-  GLuint vbo;
-  glCreateBuffers(1,&vbo);
-
-  glNamedBufferData(vbo,sizeof(bunnyVertices),bunnyVertices,GL_DYNAMIC_DRAW);
-
-
-
-  uint32_t const elements[] = {
-    0,1,2,
-    2,1,3,
-  };
-
-  GLuint ebo;
-  glCreateBuffers(1,&ebo);
-  glNamedBufferData(ebo,sizeof(bunnyIndices),bunnyIndices,GL_DYNAMIC_DRAW);
-
-
-  GLuint vao;
-  glCreateVertexArrays(1,&vao);
-  glVertexArrayElementBuffer(vao,ebo);
+  GLuint vao = createVertexArray();
   addAttrib(vao,vbo,0,3,GL_FLOAT,sizeof(float)*0,sizeof(float)*6);
   addAttrib(vao,vbo,1,3,GL_FLOAT,sizeof(float)*3,sizeof(float)*6);
+  addElementBuffer(vao,ebo);
 
 
   uint32_t triangleCounter = 0;
