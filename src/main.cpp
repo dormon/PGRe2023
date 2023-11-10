@@ -194,6 +194,7 @@ int main(int argc,char*argv[]){
   in vec3 vLambert;
 
   uniform int usePhongShading = 0;
+  uniform mat4 view  = mat4(1.f);
 
   out vec4 fColor;
   void main(){
@@ -203,16 +204,23 @@ int main(int argc,char*argv[]){
     vec3 ambientLightColor = vec3(.4,0,0);
     vec3 materialColor     = vec3(.5);
 
+    vec3 cameraPosition = vec3(inverse(view)*vec4(0,0,0,1));
+
     vec3 N = normalize(vNormal);
     vec3 L = normalize(lightPosition - vPosition);
+    vec3 V = normalize(cameraPosition - vPosition);
 
     float diffuseFactor = clamp(dot(N,L),0.f,1.f);
 
     vec3 ambient = ambientLightColor * materialColor;
     vec3 diffuse = lightColor * materialColor * diffuseFactor;
 
+    vec3 R; //TODO
+    vec3 specular; //TODO
+
 
     vec3 lambert = ambient + diffuse;
+    vec3 phong; //TODO
 
 
     if(usePhongShading == 1)
