@@ -141,86 +141,101 @@ int main(int argc,char*argv[]){
   auto vsSrc = R".(
   #version 410
 
-  out vec3 vColor;
 
   layout(location=0)in vec3 position;
-  layout(location=1)in vec3 color;
+  layout(location=1)in vec3 normal  ;
 
   uniform mat4 proj  = mat4(1.f);
   uniform mat4 view  = mat4(1.f);
   uniform mat4 model = mat4(1.f);
 
+  out vec3 vNormal;
+
+  out vec3 vPosition;
+
+  out vec3 vLambert;
+
   void main(){
-    vColor = color;
+    vNormal = normal;
+
+    vPosition = vec3(model*vec4(position,1));
+    vNormal   = vec3(transpose(inverse(model))*vec4(normal,0));
+
+    vec3 lightPosition     = vec3(10,10,10);
+    vec3 lightColor        = vec3(1,1,0);
+    vec3 ambientLightColor = vec3(.4,0,0);
+    vec3 materialColor     = vec3(.5);
+
+    vec3 N = normalize(vNormal);
+    vec3 L = normalize(lightPosition - vPosition);
+
+    float diffuseFactor = clamp(dot(N,L),0.f,1.f);
+
+    vec3 ambient = ambientLightColor * materialColor;
+    vec3 diffuse = lightColor * materialColor * diffuseFactor;
+
+
+    vec3 lambert = ambient + diffuse;
+
+    vLambert = lambert;
 
     gl_Position = proj*view*model*vec4(position,1);
 
   }
   ).";
 
-  auto gsSrc = R".(
-  #version 410
-
-  layout(triangles)in;
-  layout(line_strip,max_vertices=6)out;
-
-  in vec3 vColor[];
-  out vec3 gColor;
-
-  void main(){
-    vec4 center = (gl_in[0].gl_Position + gl_in[1].gl_Position + gl_in[2].gl_Position) / 3.f;
-    vec3 cc = (vColor[0] + vColor[1] + vColor[2]) /3.f;
-
-    vec4 A = (gl_in[0].gl_Position + gl_in[1].gl_Position) / 2.f;
-    vec4 B = (gl_in[1].gl_Position + gl_in[2].gl_Position) / 2.f;
-    vec4 C = (gl_in[2].gl_Position + gl_in[0].gl_Position) / 2.f;
-
-    vec3 cA = (vColor[0] + vColor[1]) / 2.f;
-    vec3 cB = (vColor[1] + vColor[2]) / 2.f;
-    vec3 cC = (vColor[2] + vColor[0]) / 2.f;
-
-
-    gl_Position = center;gColor = cc;EmitVertex();
-    gl_Position = A;gColor = cA;EmitVertex();
-    EndPrimitive();
-
-    gl_Position = center;gColor = cc;EmitVertex();
-    gl_Position = B;gColor = cB;EmitVertex();
-    EndPrimitive();
-
-    gl_Position = center;gColor = cc;EmitVertex();
-    gl_Position = C;gColor = cC;EmitVertex();
-    EndPrimitive();
-
-  }
-
-  ).";
 
   auto fsSrc = R".(
   #version 410
   
-  in vec3 gColor;
+  in vec3 vNormal;
+  in vec3 vPosition;
+
+  in vec3 vLambert;
+
+  uniform int usePhongShading = 0;
 
   out vec4 fColor;
   void main(){
-    fColor = vec4(gColor,1);
-    //fColor = vec4(0,0,0,1);
+
+    vec3 lightPosition     = vec3(10,10,10);
+    vec3 lightColor        = vec3(1,1,0);
+    vec3 ambientLightColor = vec3(.4,0,0);
+    vec3 materialColor     = vec3(.5);
+
+    vec3 N = normalize(vNormal);
+    vec3 L = normalize(lightPosition - vPosition);
+
+    float diffuseFactor = clamp(dot(N,L),0.f,1.f);
+
+    vec3 ambient = ambientLightColor * materialColor;
+    vec3 diffuse = lightColor * materialColor * diffuseFactor;
+
+
+    vec3 lambert = ambient + diffuse;
+
+
+    if(usePhongShading == 1)
+      fColor = vec4(lambert,1);
+    else
+      fColor = vec4(vLambert,1);
   }
 
   ).";
 
 
   GLuint vs  = createShader(GL_VERTEX_SHADER,vsSrc);
-  GLuint gs  = createShader(GL_GEOMETRY_SHADER,gsSrc);
   GLuint fs  = createShader(GL_FRAGMENT_SHADER,fsSrc);
-  GLuint prg = createProgram({vs,gs,fs});
+  GLuint prg = createProgram({vs,fs});
 
-  GLuint angleL  = glGetUniformLocation(prg,"angle" );
-  GLuint projL   = glGetUniformLocation(prg,"proj"  );
-  GLuint viewL   = glGetUniformLocation(prg,"view"  );
-  GLuint modelL  = glGetUniformLocation(prg,"model" );
+  GLuint angleL           = glGetUniformLocation(prg,"angle"          );
+  GLuint projL            = glGetUniformLocation(prg,"proj"           );
+  GLuint viewL            = glGetUniformLocation(prg,"view"           );
+  GLuint modelL           = glGetUniformLocation(prg,"model"          );
+  GLuint usePhongShadingL = glGetUniformLocation(prg,"usePhongShading");
 
   float angle = 0.f;
+  int usePhongShading = 0;
 
 
   GLuint vbo = createBuffer(sizeof(bunnyVertices),bunnyVertices);
@@ -259,6 +274,9 @@ int main(int argc,char*argv[]){
         auto key = event.key.keysym.sym;
         if(key == SDLK_q)
           running = false;
+        if(key == SDLK_p)
+          usePhongShading = !usePhongShading;
+
       }
       if(event.type == SDL_MOUSEMOTION){
         if(event.motion.state & SDL_BUTTON_LMASK){
@@ -284,7 +302,7 @@ int main(int argc,char*argv[]){
 
 
 
-    glClearColor(0.3,0.3,0.3,1);
+    glClearColor(0.,0.,0.,1);
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
   
@@ -305,6 +323,7 @@ int main(int argc,char*argv[]){
 
     glUniformMatrix4fv(projL ,1,GL_FALSE,(float*)&proj );
     glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
+    glUniform1i(usePhongShadingL,usePhongShading);
 
 
     auto T = glm::translate(glm::mat4(1.f),glm::vec3(0.f,0.f,0.f));
@@ -312,20 +331,6 @@ int main(int argc,char*argv[]){
     auto R = glm::rotate(glm::mat4(1.f),glm::radians(angle*.2f),glm::vec3(0.f,1.f,0.f));
     auto model1 = T*R*S;
     glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model1);
-    glDrawElements(GL_TRIANGLES,sizeof(bunnyIndices)/sizeof(uint32_t),GL_UNSIGNED_INT,0);
-
-    auto T2 = glm::translate(glm::mat4(1.f),glm::vec3(4.f,0.f,0.f));
-    auto S2 = glm::scale(glm::mat4(1.f),glm::vec3(.2f));
-    auto R2 = glm::rotate(glm::mat4(1.f),glm::radians(angle*2),glm::vec3(0.f,1.f,0.f));
-    auto model2 = R*T2*S2*R2;
-    glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model2);
-    glDrawElements(GL_TRIANGLES,sizeof(bunnyIndices)/sizeof(uint32_t),GL_UNSIGNED_INT,0);
-
-    auto T3 = glm::translate(glm::mat4(1.f),glm::vec3(4.f,0.f,0.f));
-    auto S3 = glm::scale(glm::mat4(1.f),glm::vec3(.2f));
-    auto R3 = glm::rotate(glm::mat4(1.f),glm::radians(-angle*3),glm::vec3(0.f,1.f,0.f));
-    auto model3 = model2*T3*R3*S3;
-    glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model3);
     glDrawElements(GL_TRIANGLES,sizeof(bunnyIndices)/sizeof(uint32_t),GL_UNSIGNED_INT,0);
 
     // after rendering
