@@ -13,8 +13,13 @@
 #include<glm/glm.hpp>
 #include<glm/gtc/matrix_transform.hpp>
 #include<glm/gtc/type_ptr.hpp>
+#include<libs/stb_image/stb_image.h>
 
 #define OPENGL_OLD
+
+#ifndef CMAKE_ROOT_DIR
+#define CMAKE_ROOT_DIR "."
+#endif
 
 using namespace ge::gl;
 
@@ -246,16 +251,78 @@ int main(int argc,char*argv[]){
 
   ).";
 
+  auto texVsSrc = R".(
+  #version 410
+  #line 251
+  
+  uniform mat4 view = mat4(1.);
+  uniform mat4 proj = mat4(1.);
+
+  out vec2 vTexCoord;
+
+  void main(){
+    mat4 pv = proj * view;
+    if(gl_VertexID==0){gl_Position = pv*vec4(0,0,0,1);vTexCoord=vec2(0,1);}
+    if(gl_VertexID==1){gl_Position = pv*vec4(1,0,0,1);vTexCoord=vec2(1,1);}
+    if(gl_VertexID==2){gl_Position = pv*vec4(0,1,0,1);vTexCoord=vec2(0,0);}
+    if(gl_VertexID==3){gl_Position = pv*vec4(1,1,0,1);vTexCoord=vec2(1,0);}
+    
+  }
+  ).";
+
+  auto texFsSrc = R".(
+  #version 410
+  #line 263
+
+  in vec2 vTexCoord;
+
+  uniform sampler2D myTex;
+
+  out vec4 fColor;
+  void main(){
+    //fColor = vec4(vTexCoord,0,1);
+    fColor = texture(myTex,vTexCoord);
+  }
+
+  ).";
+
 
   GLuint vs  = createShader(GL_VERTEX_SHADER,vsSrc);
   GLuint fs  = createShader(GL_FRAGMENT_SHADER,fsSrc);
   GLuint prg = createProgram({vs,fs});
+
 
   GLuint angleL           = glGetUniformLocation(prg,"angle"          );
   GLuint projL            = glGetUniformLocation(prg,"proj"           );
   GLuint viewL            = glGetUniformLocation(prg,"view"           );
   GLuint modelL           = glGetUniformLocation(prg,"model"          );
   GLuint usePhongShadingL = glGetUniformLocation(prg,"usePhongShading");
+
+  GLuint texVs  = createShader(GL_VERTEX_SHADER,texVsSrc);
+  GLuint texFs  = createShader(GL_FRAGMENT_SHADER,texFsSrc);
+  GLuint texPrg = createProgram({texVs,texFs});
+  GLuint texProjL            = glGetUniformLocation(texPrg,"proj"           );
+  GLuint texViewL            = glGetUniformLocation(texPrg,"view"           );
+  GLuint texL                = glGetUniformLocation(texPrg,"myTex"          );
+
+
+  int x,y,channels;
+  auto data = stbi_load(CMAKE_ROOT_DIR "/resources/example.png",&x,&y,&channels,0);
+
+
+  GLuint tex;
+  glGenTextures(1,&tex);
+  glBindTexture(GL_TEXTURE_2D,tex);
+
+  glPixelStorei(GL_UNPACK_ROW_LENGTH,x);
+  glPixelStorei(GL_UNPACK_ALIGNMENT ,1);
+  if(channels==4)
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,x,y,0,GL_RGBA,GL_UNSIGNED_BYTE,data);
+  if(channels==3)
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGB8,x,y,0,GL_RGB,GL_UNSIGNED_BYTE,data);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+
 
   float angle = 0.f;
   int usePhongShading = 0;
@@ -355,6 +422,15 @@ int main(int argc,char*argv[]){
     auto model1 = T*R*S;
     glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model1);
     glDrawElements(GL_TRIANGLES,sizeof(bunnyIndices)/sizeof(uint32_t),GL_UNSIGNED_INT,0);
+
+
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D,tex);
+    glUseProgram(texPrg);
+    glUniform1i(texL,3);
+    glUniformMatrix4fv(texViewL ,1,GL_FALSE,(float*)&view );
+    glUniformMatrix4fv(texProjL ,1,GL_FALSE,(float*)&proj );
+    glDrawArrays(GL_TRIANGLE_STRIP,0,4);
 
     // after rendering
     SDL_GL_SwapWindow(window);
