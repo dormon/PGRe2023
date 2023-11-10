@@ -154,6 +154,7 @@ int main(int argc,char*argv[]){
   out vec3 vPosition;
 
   out vec3 vLambert;
+  out vec3 vPhong  ;
 
   void main(){
     vNormal = normal;
@@ -161,10 +162,13 @@ int main(int argc,char*argv[]){
     vPosition = vec3(model*vec4(position,1));
     vNormal   = vec3(transpose(inverse(model))*vec4(normal,0));
 
-    vec3 lightPosition     = vec3(10,10,10);
-    vec3 lightColor        = vec3(1,1,0);
-    vec3 ambientLightColor = vec3(.4,0,0);
-    vec3 materialColor     = vec3(.5);
+    vec3 lightPosition        = vec3(10,10,10);
+    vec3 lightColor           = vec3(1,1,0);
+    vec3 ambientLightColor    = vec3(.4,0,0);
+    vec3 materialColor        = vec3(.5);
+    vec3 specularMatrialColor = vec3(1);
+
+    vec3 cameraPosition = vec3(inverse(view)*vec4(0,0,0,1));
 
     vec3 N = normalize(vNormal);
     vec3 L = normalize(lightPosition - vPosition);
@@ -174,10 +178,17 @@ int main(int argc,char*argv[]){
     vec3 ambient = ambientLightColor * materialColor;
     vec3 diffuse = lightColor * materialColor * diffuseFactor;
 
+    vec3 R = -reflect(L,N);
+    float shininess = 100;
+    float specularFactor = pow(clamp(dot(R,L),0.f,1.f),shininess);
+    vec3 specular = specularFactor * lightColor * specularMatrialColor;
+
 
     vec3 lambert = ambient + diffuse;
+    vec3 phong = ambient + diffuse + specular;
 
     vLambert = lambert;
+    vPhong   = phong  ;
 
     gl_Position = proj*view*model*vec4(position,1);
 
@@ -192,6 +203,7 @@ int main(int argc,char*argv[]){
   in vec3 vPosition;
 
   in vec3 vLambert;
+  in vec3 vPhong  ;
 
   uniform int usePhongShading = 0;
   uniform mat4 view  = mat4(1.f);
@@ -199,10 +211,11 @@ int main(int argc,char*argv[]){
   out vec4 fColor;
   void main(){
 
-    vec3 lightPosition     = vec3(10,10,10);
-    vec3 lightColor        = vec3(1,1,0);
-    vec3 ambientLightColor = vec3(.4,0,0);
-    vec3 materialColor     = vec3(.5);
+    vec3 lightPosition        = vec3(10,10,10);
+    vec3 lightColor           = vec3(1,1,0);
+    vec3 ambientLightColor    = vec3(.4,0,0);
+    vec3 materialColor        = vec3(.5);
+    vec3 specularMatrialColor = vec3(1);
 
     vec3 cameraPosition = vec3(inverse(view)*vec4(0,0,0,1));
 
@@ -215,18 +228,20 @@ int main(int argc,char*argv[]){
     vec3 ambient = ambientLightColor * materialColor;
     vec3 diffuse = lightColor * materialColor * diffuseFactor;
 
-    vec3 R; //TODO
-    vec3 specular; //TODO
+    vec3 R = -reflect(L,N);
+    float shininess = 100;
+    float specularFactor = pow(clamp(dot(R,L),0.f,1.f),shininess);
+    vec3 specular = specularFactor * lightColor * specularMatrialColor;
 
 
     vec3 lambert = ambient + diffuse;
-    vec3 phong; //TODO
+    vec3 phong = ambient + diffuse + specular;
 
 
     if(usePhongShading == 1)
-      fColor = vec4(lambert,1);
+      fColor = vec4(phong,1);
     else
-      fColor = vec4(vLambert,1);
+      fColor = vec4(vPhong,1);
   }
 
   ).";
