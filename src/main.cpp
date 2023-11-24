@@ -154,6 +154,8 @@ int main(int argc,char*argv[]){
   uniform mat4 view  = mat4(1.f);
   uniform mat4 model = mat4(1.f);
 
+  uniform vec3 lightPosition = vec3(10,10,10);
+
   out vec3 vNormal;
 
   out vec3 vPosition;
@@ -167,7 +169,6 @@ int main(int argc,char*argv[]){
     vPosition = vec3(model*vec4(position,1));
     vNormal   = vec3(transpose(inverse(model))*vec4(normal,0));
 
-    vec3 lightPosition        = vec3(10,10,10);
     vec3 lightColor           = vec3(1,1,0);
     vec3 ambientLightColor    = vec3(.4,0,0);
     vec3 materialColor        = vec3(.5);
@@ -212,11 +213,11 @@ int main(int argc,char*argv[]){
 
   uniform int usePhongShading = 0;
   uniform mat4 view  = mat4(1.f);
+  uniform vec3 lightPosition = vec3(10,10,10);
 
   out vec4 fColor;
   void main(){
 
-    vec3 lightPosition        = vec3(10,10,10);
     vec3 lightColor           = vec3(1,1,0);
     vec3 ambientLightColor    = vec3(.4,0,0);
     vec3 materialColor        = vec3(.5);
@@ -297,6 +298,7 @@ int main(int argc,char*argv[]){
   GLuint viewL            = glGetUniformLocation(prg,"view"           );
   GLuint modelL           = glGetUniformLocation(prg,"model"          );
   GLuint usePhongShadingL = glGetUniformLocation(prg,"usePhongShading");
+  GLuint lightPositionL   = glGetUniformLocation(prg,"lightPosition"  );
 
   GLuint texVs  = createShader(GL_VERTEX_SHADER,texVsSrc);
   GLuint texFs  = createShader(GL_FRAGMENT_SHADER,texFsSrc);
@@ -304,6 +306,8 @@ int main(int argc,char*argv[]){
   GLuint texProjL            = glGetUniformLocation(texPrg,"proj"           );
   GLuint texViewL            = glGetUniformLocation(texPrg,"view"           );
   GLuint texL                = glGetUniformLocation(texPrg,"myTex"          );
+
+  auto lightPosition = glm::vec3(0.f,3.f,0.f);
 
 
   int x,y,channels;
@@ -366,6 +370,10 @@ int main(int argc,char*argv[]){
           running = false;
         if(key == SDLK_p)
           usePhongShading = !usePhongShading;
+        if(key == SDLK_i)lightPosition.z -= 0.1f;
+        if(key == SDLK_k)lightPosition.z += 0.1f;
+        if(key == SDLK_l)lightPosition.x += 0.1f;
+        if(key == SDLK_j)lightPosition.x -= 0.1f;
 
       }
       if(event.type == SDL_MOUSEMOTION){
@@ -409,7 +417,7 @@ int main(int argc,char*argv[]){
 
     auto view = glm::lookAt(cameraLocation,glm::vec3(0.f),glm::vec3(0.f,1.f,0.f));
 
-    angle += 1.f;
+    angle += 0.f;
 
     glUniformMatrix4fv(projL ,1,GL_FALSE,(float*)&proj );
     glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
@@ -421,6 +429,7 @@ int main(int argc,char*argv[]){
     auto R = glm::rotate(glm::mat4(1.f),glm::radians(angle*.2f),glm::vec3(0.f,1.f,0.f));
     auto model1 = T*R*S;
     glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model1);
+    glUniform3fv(lightPositionL,1,(float*)&lightPosition);
     glDrawElements(GL_TRIANGLES,sizeof(bunnyIndices)/sizeof(uint32_t),GL_UNSIGNED_INT,0);
 
 
