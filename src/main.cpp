@@ -495,15 +495,14 @@ int main(int argc,char*argv[]){
     proj = lightProj;
     // 1.pass - create shadow map 
     {
+      glViewport(0,0,1024,1024);
+
       glBindFramebuffer(GL_FRAMEBUFFER,shadowFBO);
       glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
       glUniformMatrix4fv(projL ,1,GL_FALSE,(float*)&proj );
       glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
       glUniform1i(usePhongShadingL,usePhongShading);
-
-
-      glViewport(0,0,1024,1024);
 
       auto T = glm::translate(glm::mat4(1.f),glm::vec3(0.f,0.f,0.f));
       auto S = glm::scale(glm::mat4(1.f),glm::vec3(1.f,1.f,1.f));
@@ -520,9 +519,10 @@ int main(int argc,char*argv[]){
     proj = cameraProj;
     // 2.pass - rendering of the scene
     {
+      glViewport(0,0,width,height);
+
       glUniformMatrix4fv(projL ,1,GL_FALSE,(float*)&proj );
       glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
-
 
       glUniformMatrix4fv(lightProjL ,1,GL_FALSE,(float*)&lightProj );
       glUniformMatrix4fv(lightViewL ,1,GL_FALSE,(float*)&lightView );
@@ -534,7 +534,6 @@ int main(int argc,char*argv[]){
       glActiveTexture(GL_TEXTURE4);
       glBindTexture(GL_TEXTURE_2D,shadowMap);
 
-      glViewport(0,0,width,height);
 
       auto T = glm::translate(glm::mat4(1.f),glm::vec3(0.f,0.f,0.f));
       auto S = glm::scale(glm::mat4(1.f),glm::vec3(1.f,1.f,1.f));
