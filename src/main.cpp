@@ -1,5 +1,6 @@
 #include "geGL/DebugMessage.h"
 #include "geGL/OpenGL.h"
+#include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/gtc/constants.hpp"
 #include<iostream>
@@ -154,6 +155,11 @@ int main(int argc,char*argv[]){
   uniform mat4 view  = mat4(1.f);
   uniform mat4 model = mat4(1.f);
 
+  uniform mat4 lightView = mat4(1.f);
+  uniform mat4 lightProj = mat4(1.f);
+
+  out vec4 vertInsideShadowMap;
+
   uniform vec3 lightPosition = vec3(10,10,10);
 
   out vec3 vNormal;
@@ -198,6 +204,8 @@ int main(int argc,char*argv[]){
 
     gl_Position = proj*view*model*vec4(position,1);
 
+    vertInsideShadowMap = lightProj*lightView*model*vec4(position,1);
+
   }
   ).";
 
@@ -211,9 +219,13 @@ int main(int argc,char*argv[]){
   in vec3 vLambert;
   in vec3 vPhong  ;
 
-  uniform int usePhongShading = 0;
+  uniform int usePhongShading = 1;
   uniform mat4 view  = mat4(1.f);
   uniform vec3 lightPosition = vec3(10,10,10);
+
+  uniform sampler2D shadowMap;
+
+  in vec4 vertInsideShadowMap;
 
   out vec4 fColor;
   void main(){
@@ -240,8 +252,24 @@ int main(int argc,char*argv[]){
     vec3 specular = specularFactor * lightColor * specularMatrialColor;
 
 
-    vec3 lambert = ambient + diffuse;
-    vec3 phong = ambient + diffuse + specular;
+    vec3 ndc = vertInsideShadowMap.xyz / vertInsideShadowMap.w;
+    ndc*=.5f;
+    ndc+=.5f;
+  
+    float shadowSampleDistanceToTheLight = texture(shadowMap,ndc.xy).r;
+    float viewSampleDistanceToTheLight  = ndc.z;
+
+    float lit = 0.f;
+    if(viewSampleDistanceToTheLight > shadowSampleDistanceToTheLight){
+      lit = 0.f; 
+    }else{
+      lit = 1.f;
+    }
+
+
+
+    vec3 lambert = ambient + (diffuse)*lit;
+    vec3 phong = ambient + (diffuse + specular)*lit;
 
 
     if(usePhongShading == 1)
@@ -281,7 +309,7 @@ int main(int argc,char*argv[]){
   uniform sampler2D shadowMap;
 
   uniform float near_plane = 0.1f;
-  uniform float far_plane = 1000.f;
+  uniform float far_plane = 10.f;
 
   float linearizeDepth(float depth)
   {
@@ -313,8 +341,11 @@ int main(int argc,char*argv[]){
   GLuint projL            = glGetUniformLocation(prg,"proj"           );
   GLuint viewL            = glGetUniformLocation(prg,"view"           );
   GLuint modelL           = glGetUniformLocation(prg,"model"          );
+  GLuint lightViewL       = glGetUniformLocation(prg,"lightView"      );
+  GLuint lightProjL       = glGetUniformLocation(prg,"lightProj"      );
   GLuint usePhongShadingL = glGetUniformLocation(prg,"usePhongShading");
   GLuint lightPositionL   = glGetUniformLocation(prg,"lightPosition"  );
+  GLuint shadowMapL       = glGetUniformLocation(prg,"shadowMap"      );
 
   GLuint texVs  = createShader(GL_VERTEX_SHADER,texVsSrc);
   GLuint texFs  = createShader(GL_FRAGMENT_SHADER,texFsSrc);
@@ -322,7 +353,7 @@ int main(int argc,char*argv[]){
   GLuint texProjL            = glGetUniformLocation(texPrg,"proj"           );
   GLuint texViewL            = glGetUniformLocation(texPrg,"view"           );
   GLuint texL                = glGetUniformLocation(texPrg,"myTex"          );
-  GLuint shadowMapL          = glGetUniformLocation(texPrg,"shadowMap"      );
+  GLuint texShadowMapL       = glGetUniformLocation(texPrg,"shadowMap"      );
 
   auto lightPosition = glm::vec3(0.1f,3.f,0.1f);
 
@@ -351,6 +382,8 @@ int main(int argc,char*argv[]){
   glTexImage2D(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT24,1024,1024,0,GL_DEPTH_COMPONENT,GL_FLOAT,nullptr);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
 
 
   GLuint shadowFBO;
@@ -363,7 +396,7 @@ int main(int argc,char*argv[]){
 
 
   float angle = 0.f;
-  int usePhongShading = 0;
+  int usePhongShading = 1;
 
 
   GLuint vbo = createBuffer(sizeof(bunnyVertices),bunnyVertices);
@@ -380,7 +413,9 @@ int main(int argc,char*argv[]){
   v = M*v;
 
   float aspect = (float)width / (float)height;
-  auto proj = glm::perspective(glm::half_pi<float>(),aspect,0.1f,1000.f);
+
+  glm::mat4 proj = glm::mat4(1.f);
+  auto cameraProj = glm::perspective(glm::half_pi<float>(),aspect,0.1f,1000.f);
 
 
 
@@ -453,8 +488,11 @@ int main(int argc,char*argv[]){
 
     angle += 0.f;
 
+    auto lightView = glm::lookAt(lightPosition,glm::vec3(0.f),glm::vec3(0.f,1.f,0.f));
+    auto lightProj = glm::perspective(glm::half_pi<float>(),1.f,0.1f,10.f);
 
-    view = glm::lookAt(lightPosition,glm::vec3(0.f),glm::vec3(0.f,1.f,0.f));
+    view = lightView;
+    proj = lightProj;
     // 1.pass - create shadow map 
     {
       glBindFramebuffer(GL_FRAMEBUFFER,shadowFBO);
@@ -464,6 +502,8 @@ int main(int argc,char*argv[]){
       glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
       glUniform1i(usePhongShadingL,usePhongShading);
 
+
+      glViewport(0,0,1024,1024);
 
       auto T = glm::translate(glm::mat4(1.f),glm::vec3(0.f,0.f,0.f));
       auto S = glm::scale(glm::mat4(1.f),glm::vec3(1.f,1.f,1.f));
@@ -477,12 +517,24 @@ int main(int argc,char*argv[]){
     }
 
     view = glm::lookAt(cameraLocation,glm::vec3(0.f),glm::vec3(0.f,1.f,0.f));
+    proj = cameraProj;
     // 2.pass - rendering of the scene
     {
       glUniformMatrix4fv(projL ,1,GL_FALSE,(float*)&proj );
       glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
+
+
+      glUniformMatrix4fv(lightProjL ,1,GL_FALSE,(float*)&lightProj );
+      glUniformMatrix4fv(lightViewL ,1,GL_FALSE,(float*)&lightView );
+
       glUniform1i(usePhongShadingL,usePhongShading);
 
+
+      glUniform1i(shadowMapL,4);
+      glActiveTexture(GL_TEXTURE4);
+      glBindTexture(GL_TEXTURE_2D,shadowMap);
+
+      glViewport(0,0,width,height);
 
       auto T = glm::translate(glm::mat4(1.f),glm::vec3(0.f,0.f,0.f));
       auto S = glm::scale(glm::mat4(1.f),glm::vec3(1.f,1.f,1.f));
@@ -502,7 +554,7 @@ int main(int argc,char*argv[]){
 
     glUseProgram(texPrg);
     glUniform1i(texL,3);
-    glUniform1i(shadowMapL,4);
+    glUniform1i(texShadowMapL,4);
     glUniformMatrix4fv(texViewL ,1,GL_FALSE,(float*)&view );
     glUniformMatrix4fv(texProjL ,1,GL_FALSE,(float*)&proj );
     glDrawArrays(GL_TRIANGLE_STRIP,0,4);
