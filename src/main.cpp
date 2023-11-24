@@ -278,11 +278,27 @@ int main(int argc,char*argv[]){
   in vec2 vTexCoord;
 
   uniform sampler2D myTex;
+  uniform sampler2D shadowMap;
+
+  uniform float near_plane = 0.1f;
+  uniform float far_plane = 1000.f;
+
+  float linearizeDepth(float depth)
+  {
+      float z = depth * 2.0 - 1.0; // Back to NDC 
+      return (2.0 * near_plane * far_plane) / (far_plane + near_plane - z * (far_plane - near_plane));
+  }
+
 
   out vec4 fColor;
   void main(){
     //fColor = vec4(vTexCoord,0,1);
-    fColor = texture(myTex,vTexCoord);
+    //fColor = texture(myTex,vTexCoord);
+
+    float depth = texture(shadowMap,vTexCoord).r;
+    float linDepth = linearizeDepth(depth) / far_plane;
+
+    fColor = vec4(linDepth,linDepth,linDepth,1);
   }
 
   ).";
@@ -306,8 +322,9 @@ int main(int argc,char*argv[]){
   GLuint texProjL            = glGetUniformLocation(texPrg,"proj"           );
   GLuint texViewL            = glGetUniformLocation(texPrg,"view"           );
   GLuint texL                = glGetUniformLocation(texPrg,"myTex"          );
+  GLuint shadowMapL          = glGetUniformLocation(texPrg,"shadowMap"      );
 
-  auto lightPosition = glm::vec3(0.f,3.f,0.f);
+  auto lightPosition = glm::vec3(0.1f,3.f,0.1f);
 
 
   int x,y,channels;
@@ -326,6 +343,23 @@ int main(int argc,char*argv[]){
     glTexImage2D(GL_TEXTURE_2D,0,GL_RGB8,x,y,0,GL_RGB,GL_UNSIGNED_BYTE,data);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+
+
+  GLuint shadowMap;
+  glGenTextures(1,&shadowMap);
+  glBindTexture(GL_TEXTURE_2D,shadowMap);
+  glTexImage2D(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT24,1024,1024,0,GL_DEPTH_COMPONENT,GL_FLOAT,nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+
+
+  GLuint shadowFBO;
+  glGenFramebuffers(1,&shadowFBO);
+  glBindFramebuffer(GL_FRAMEBUFFER,shadowFBO);
+  glFramebufferTexture2D(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,GL_TEXTURE_2D,shadowMap,0);
+  glBindFramebuffer(GL_FRAMEBUFFER,0);
+
+
 
 
   float angle = 0.f;
@@ -419,24 +453,56 @@ int main(int argc,char*argv[]){
 
     angle += 0.f;
 
-    glUniformMatrix4fv(projL ,1,GL_FALSE,(float*)&proj );
-    glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
-    glUniform1i(usePhongShadingL,usePhongShading);
+
+    view = glm::lookAt(lightPosition,glm::vec3(0.f),glm::vec3(0.f,1.f,0.f));
+    // 1.pass - create shadow map 
+    {
+      glBindFramebuffer(GL_FRAMEBUFFER,shadowFBO);
+      glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+      glUniformMatrix4fv(projL ,1,GL_FALSE,(float*)&proj );
+      glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
+      glUniform1i(usePhongShadingL,usePhongShading);
 
 
-    auto T = glm::translate(glm::mat4(1.f),glm::vec3(0.f,0.f,0.f));
-    auto S = glm::scale(glm::mat4(1.f),glm::vec3(1.f,1.f,1.f));
-    auto R = glm::rotate(glm::mat4(1.f),glm::radians(angle*.2f),glm::vec3(0.f,1.f,0.f));
-    auto model1 = T*R*S;
-    glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model1);
-    glUniform3fv(lightPositionL,1,(float*)&lightPosition);
-    glDrawElements(GL_TRIANGLES,sizeof(bunnyIndices)/sizeof(uint32_t),GL_UNSIGNED_INT,0);
+      auto T = glm::translate(glm::mat4(1.f),glm::vec3(0.f,0.f,0.f));
+      auto S = glm::scale(glm::mat4(1.f),glm::vec3(1.f,1.f,1.f));
+      auto R = glm::rotate(glm::mat4(1.f),glm::radians(angle*.2f),glm::vec3(0.f,1.f,0.f));
+      auto model1 = T*R*S;
+      glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model1);
+      glUniform3fv(lightPositionL,1,(float*)&lightPosition);
+      glDrawElements(GL_TRIANGLES,sizeof(bunnyIndices)/sizeof(uint32_t),GL_UNSIGNED_INT,0);
+
+      glBindFramebuffer(GL_FRAMEBUFFER,0);
+    }
+
+    view = glm::lookAt(cameraLocation,glm::vec3(0.f),glm::vec3(0.f,1.f,0.f));
+    // 2.pass - rendering of the scene
+    {
+      glUniformMatrix4fv(projL ,1,GL_FALSE,(float*)&proj );
+      glUniformMatrix4fv(viewL ,1,GL_FALSE,(float*)&view );
+      glUniform1i(usePhongShadingL,usePhongShading);
+
+
+      auto T = glm::translate(glm::mat4(1.f),glm::vec3(0.f,0.f,0.f));
+      auto S = glm::scale(glm::mat4(1.f),glm::vec3(1.f,1.f,1.f));
+      auto R = glm::rotate(glm::mat4(1.f),glm::radians(angle*.2f),glm::vec3(0.f,1.f,0.f));
+      auto model1 = T*R*S;
+      glUniformMatrix4fv(modelL,1,GL_FALSE,(float*)&model1);
+      glUniform3fv(lightPositionL,1,(float*)&lightPosition);
+      glDrawElements(GL_TRIANGLES,sizeof(bunnyIndices)/sizeof(uint32_t),GL_UNSIGNED_INT,0);
+    }
 
 
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D,tex);
+
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D,shadowMap);
+
     glUseProgram(texPrg);
     glUniform1i(texL,3);
+    glUniform1i(shadowMapL,4);
     glUniformMatrix4fv(texViewL ,1,GL_FALSE,(float*)&view );
     glUniformMatrix4fv(texProjL ,1,GL_FALSE,(float*)&proj );
     glDrawArrays(GL_TRIANGLE_STRIP,0,4);
