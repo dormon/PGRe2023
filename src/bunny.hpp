@@ -19,10 +19,10 @@ struct BunnyVertex {
 };
 
 /// This variable contains vertices of Standford bunny.
-extern struct BunnyVertex const bunnyVertices[1048];
+extern struct BunnyVertex const bunnyVertices[1048+4];
 
 using VertexIndex = uint32_t;///< type of index
 
 /// This variable contains Standford bunny indices.
-extern const VertexIndex bunnyIndices[2092][3];
+extern const VertexIndex bunnyIndices[2092+2][3];
 
